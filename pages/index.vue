@@ -36,7 +36,7 @@
               </p>
               <p class="control">
                 <a class="button is-primary">Search</a>
-                <a class="button is-warning" @click="$store.dispatch('fireTest')">Test FireBase</a>
+                <a class="button is-warning" @click="$store.dispatch('test/fireTest')">Test FireBase</a>
               </p>
             </div>
           </div>
@@ -190,12 +190,12 @@
 export default {
   computed: {
     counter() {
-      return this.$store.getters.counter
+      return this.$store.getters['test/counter']
     }
   },
   methods: {
     increment(val) {
-      this.$store.dispatch('increment', val)
+      this.$store.dispatch('test/increment', val)
     }
   }
 }

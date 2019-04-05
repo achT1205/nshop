@@ -19,23 +19,17 @@
             <nuxt-link class="navbar-item" to="/">
               Home
             </nuxt-link>
-            <div class="navbar-item has-dropdown is-hoverable">
-              <a class="navbar-link is-active" href="#">
-                Admin
-              </a>
-              <div class="navbar-dropdown ">
+            <div v-if="userIsAdmin" class="navbar-item has-dropdown is-hoverable">
+              <a class="navbar-link is-active" href="#">Admin</a>
+              <div class="navbar-dropdown">
                 <nuxt-link class="navbar-item" to="/admin/product-list">
                   Products
                 </nuxt-link>
                 <nuxt-link class="navbar-item" to="/admin/product-categories">
                   Product Categories
                 </nuxt-link>
-                <a class="navbar-item " href="#">
-                  Orders
-                </a>
-                <a class="navbar-item " href="#">
-                  Customers
-                </a>
+                <a class="navbar-item" href="#">Orders</a>
+                <a class="navbar-item" href="#">Customers</a>
                 <nuxt-link class="navbar-item" to="/admin/administrators">
                   Administrators
                 </nuxt-link>
@@ -47,8 +41,20 @@
           </div>
 
           <div class="navbar-end">
-            <div class="navbar-item">
-              Hi, Guest
+            <div v-if="userLoggedIn" class="navbar-item has-dropdown is-hoverable">
+              <a class="navbar-link is-active" href="#">Hi, {{ userName }}</a>
+              <div class="navbar-dropdown">
+                <nuxt-link class="navbar-item" to="/user-profile">
+                  Profile
+                </nuxt-link>
+                <nuxt-link class="navbar-item" to="/user-pwd-change">
+                  Change Password
+                </nuxt-link>
+                <a class="navbar-item" @click="logOut">Log Out</a>
+              </div>
+            </div>
+            <div v-else class="navbar-item">
+              Hi, {{ userName }}
             </div>
             <div class="navbar-item">
               <div class="field is-grouped is-grouped-multiline">
@@ -61,18 +67,16 @@
                   </nuxt-link>
                 </p>
 
-                <p class="control">
+                <p v-if="!userLoggedIn" class="control">
                   <nuxt-link class="button is-primary" to="/login">
                     <span class="icon is-small">
                       <i class="fa fa-unlock-alt" />
                     </span>
-                    <span>
-                      Login
-                    </span>
+                    <span>Login</span>
                   </nuxt-link>
                 </p>
 
-                <p class="control">
+                <p v-if="!userLoggedIn" class="control">
                   <nuxt-link class="button is-info" to="/signup">
                     <span class="icon is-small">
                       <i class="fa fa-user-o" />
@@ -85,15 +89,16 @@
           </div>
         </div>
       </nav>
-      <nuxt /> <!-- This is where the pages are presented -->
+      <nuxt />
+      <!-- This is where the pages are presented -->
     </div>
 
     <footer class="footer">
       <div class="container">
         <div class="content has-text-centered">
           <p>
-            &copy; Nshop<br>
-            Nuxt & Vue Jump-start.
+            &copy; Nshop
+            <br>Nuxt & Vue Jump-start.
           </p>
           <p>
             <img src="/nshop-icon.png">
@@ -106,6 +111,41 @@
 
 <script>
 export default {
-
+  data() {
+    return {
+      userName: 'Guest'
+    }
+  },
+  computed: {
+    userProfile() {
+      return this.$store.getters.user
+    },
+    userLoggedIn() {
+      return this.$store.getters.logingStatus
+    },
+    userIsAdmin() {
+      return this.$store.getters.userRole === 'admin'
+    }
+  },
+  watch: {
+    userProfile(value) {
+      if (value) {
+        this.userName = value.name
+      } else {
+        this.userName = 'Guest'
+      }
+    }
+  },
+  created() {
+    if (!this.userLoggedIn) {
+      this.$store.dispatch('setAuthStatus')
+    }
+  },
+  methods: {
+    logOut() {
+      this.$store.dispatch('logOut')
+      this.$router.replace('/')
+    }
+  }
 }
 </script>
