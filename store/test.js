@@ -1,4 +1,4 @@
-import firebase from '@/plugins/firebase'
+import { fireApp } from '@/plugins/firebase'
 
 export const state = () => ({
   user: null,
@@ -17,7 +17,7 @@ export const actions = {
       one: 'Apple',
       two: 'Orange'
     }
-    firebase
+    fireApp
       .database()
       .ref('testdb')
       .push(payload)

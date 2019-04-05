@@ -1,7 +1,16 @@
 import firebase from 'firebase'
 const config = require('../config')()
-if (!firebase.apps.length) {
-  firebase.initializeApp(config.fireConfig)
+
+let ifireApp, iadminApp
+
+if (!ifireApp && !firebase.apps.length) {
+  ifireApp = firebase.initializeApp(config.fireConfig)
+  iadminApp = firebase.initializeApp(config.fireConfig, 'fireAdmin')
+} else {
+  ifireApp = firebase.app()
+  iadminApp = firebase.app('fireAdmin')
 }
 
-export default firebase
+const fireApp = ifireApp
+const adminApp = iadminApp
+export { fireApp, adminApp }

@@ -9,7 +9,7 @@ module.exports = {
   },
   extends: [
     '@nuxtjs',
-    'plugin:nuxt/recommended'
+    'plugin:nuxt/base'
   ],
   // add your custom rules here
   rules: {

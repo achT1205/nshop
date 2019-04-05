@@ -2,7 +2,7 @@ export default {
   methods: {
     removeErrors() {
       this.$validator.reset()
-      this.$store.commit('clearEssor')
+      this.$store.commit('clearError')
     }
   },
   computed: {

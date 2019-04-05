@@ -1,17 +1,20 @@
-import firebase from '@/plugins/firebase'
+import { fireApp } from '@/plugins/firebase'
+
 export const state = () => ({
   user: null,
   error: null,
   busy: false,
-  jobDone: false,
-  logingStatus: false
+  jobDone: false
 })
 
 export const mutations = {
-  setEssor(state, payload) {
+  setUser(state, payload) {
+    state.user = payload
+  },
+  setError(state, payload) {
     state.error = payload
   },
-  clearEssor(state) {
+  clearError(state) {
     state.error = null
   },
   setBusy(state, payload) {
@@ -19,33 +22,31 @@ export const mutations = {
   },
   setJobDone(state, payload) {
     state.jobDone = payload
-  },
-  setUser(state, payload) {
-    state.user = payload
-  },
-  setLogingStatus(state, payload) {
-    state.logingStatus = payload
   }
 }
 
 export const actions = {
   signUpUser({ commit }, payload) {
     commit('setBusy', true)
-    commit('clearEssor', true)
+    commit('clearError')
+    // 1. Signup new user
+    // 2. Update firebase user profile & set local user data
+    // 3. Add user data into database
+    // 4. Attach user to consumer group
     let newUser = null
-    firebase
+    fireApp
       .auth()
       .createUserWithEmailAndPassword(payload.email, payload.password)
-      .then((response) => {
-        newUser = response.user
-        return response.user
-          .updateProfile({ displayName: payload.fullName })
+      .then((user) => {
+        newUser = user
+        return user
+          .updateProfile({ displayName: payload.fullname })
           .then(() => {
             const currentUser = {
-              id: response.uid,
+              id: user.uid,
               email: payload.email,
-              name: payload.fullName,
-              role: 'customer'
+              name: payload.fullname,
+              role: 'consumer'
             }
             commit('setUser', currentUser)
           })
@@ -53,74 +54,74 @@ export const actions = {
       .then(() => {
         const userData = {
           email: payload.email,
-          fullName: payload.fullName,
-          createdAt: new Date().toString()
+          fullname: payload.fullname,
+          createdAt: new Date().toISOString()
         }
-        return firebase
+        return fireApp
           .database()
           .ref(`users/${newUser.uid}`)
           .set(userData)
       })
       .then(() => {
-        firebase
+        return fireApp
           .database()
           .ref('groups')
           .orderByChild('name')
           .equalTo('Customer')
           .once('value')
           .then((snapShot) => {
-            const elt = snapShot.val()
-            const groupkey = Object.keys(elt)
-            const groupUser = {}
-            groupUser[newUser.uid] = payload.fullName
-            return firebase
+            const groupKey = Object.keys(snapShot.val())[0]
+            const groupedUser = {}
+            groupedUser[newUser.uid] = payload.fullname
+            return fireApp
               .database()
-              .ref(`userGroups/${groupkey}`)
-              .update(groupUser)
+              .ref(`userGroups/${groupKey}`)
+              .update(groupedUser)
           })
       })
       .then(() => {
-        commit('setBusy', false)
         commit('setJobDone', true)
+        commit('setBusy', false)
       })
       .catch((error) => {
         commit('setBusy', false)
-        commit('setEssor', error)
+        commit('setError', error)
       })
   },
   loginUser({ commit }, payload) {
     commit('setBusy', true)
-    commit('clearEssor', true)
-    firebase
+    commit('clearError')
+    // 1. Login user
+    // 2. Find the group user belongs
+    // 3. Set logged in user
+    fireApp
       .auth()
       .signInWithEmailAndPassword(payload.email, payload.password)
-      .then((response) => {
+      .then((user) => {
         const authUser = {
-          id: response.user.uid,
-          email: response.user.email,
-          name: response.user.displayName
+          id: user.uid,
+          email: user.email,
+          name: user.displayName
         }
-        return firebase
+        return fireApp
           .database()
           .ref('groups')
           .orderByChild('name')
           .equalTo('Administrator')
           .once('value')
           .then((snapShot) => {
-            const elt = snapShot.val()
-            const groupkey = Object.keys(elt)
-            return firebase
+            const groupKey = Object.keys(snapShot.val())[0]
+            return fireApp
               .database()
-              .ref(`userGroups/${groupkey}`)
+              .ref(`userGroups/${groupKey}`)
               .child(`${authUser.id}`)
               .once('value')
-              .then((ugroupsnap) => {
-                if (ugroupsnap.exists()) {
+              .then((ugroupSnap) => {
+                if (ugroupSnap.exists()) {
                   authUser.role = 'admin'
                 } else {
                   authUser.role = 'customer'
                 }
-                commit('setLogingStatus', true)
                 commit('setUser', authUser)
                 commit('setBusy', false)
                 commit('setJobDone', true)
@@ -129,40 +130,36 @@ export const actions = {
       })
       .catch((error) => {
         commit('setBusy', false)
-        commit('setEssor', error)
+        commit('setError', error)
       })
   },
-
   logOut({ commit }) {
-    firebase.auth().signOut()
-    commit('setLogingStatus', false)
+    fireApp.auth().signOut()
     commit('setUser', null)
   },
   setAuthStatus({ commit }) {
-    firebase.auth().onAuthStateChanged((user) => {
+    fireApp.auth().onAuthStateChanged((user) => {
       if (user) {
         const authUser = {
-          id: user.id,
+          id: user.uid,
           email: user.email,
           name: user.displayName
         }
-
-        firebase
+        fireApp
           .database()
           .ref('groups')
           .orderByChild('name')
           .equalTo('Administrator')
           .once('value')
           .then((snapShot) => {
-            const elt = snapShot.val()
-            const groupkey = Object.keys(elt)
-            firebase
+            const groupKey = Object.keys(snapShot.val())[0]
+            fireApp
               .database()
-              .ref(`userGroups/${groupkey}`)
+              .ref(`userGroups/${groupKey}`)
               .child(`${authUser.id}`)
               .once('value')
-              .then((ugroupsnap) => {
-                if (ugroupsnap.exists()) {
+              .then((uGroupSnap) => {
+                if (uGroupSnap.exists()) {
                   authUser.role = 'admin'
                 } else {
                   authUser.role = 'customer'
@@ -172,10 +169,83 @@ export const actions = {
           })
       }
     })
+  },
+  updateProfile({ commit, getters }, payload) {
+    // 1. Update user name with updateProfile
+    // 2. Update user email with updateEmail
+    // 3. Update the database
+    // 4. Will divide the code into chunks
+    // -L8cCHJYQtgSs-fgaTHZ , -L8cCJUxYnR7OuCDAL6n
+    commit('setBusy', true)
+    commit('clearError')
+    const userData = getters.user
+    const user = fireApp.auth().currentUser
+    const updateEmail = () => {
+      return user.updateEmail(payload.email)
+    }
+    const updateDb = () => {
+      const updateObj = {}
+      if (userData.role === 'admin') {
+        updateObj[`userGroups/-L8cCHJYQtgSs-fgaTHZ/${user.uid}`] =
+          payload.fullname
+      }
+      updateObj[`userGroups/-L8cCJUxYnR7OuCDAL6n/${user.uid}`] =
+        payload.fullname
+      updateObj[`users/${user.uid}/email`] = payload.email
+      updateObj[`users/${user.uid}/fullname`] = payload.fullname
+      return fireApp
+        .database()
+        .ref()
+        .update(updateObj)
+    }
+    user
+      .updateProfile({ displayName: payload.fullname })
+      .then(updateEmail)
+      .then(updateDb)
+      .then(() => {
+        const userObj = {
+          id: userData.id,
+          email: payload.email,
+          name: payload.fullname,
+          role: userData.role
+        }
+        commit('setUser', userObj)
+        commit('setBusy', false)
+        commit('setJobDone', true)
+      })
+      .catch((error) => {
+        commit('setBusy', false)
+        commit('setError', error)
+      })
+  },
+  changePwd({ commit }, payload) {
+    commit('setBusy', true)
+    commit('clearError')
+    const user = fireApp.auth().currentUser
+    user
+      .updatePassword(payload.password)
+      .then(() => {
+        commit('setBusy', false)
+        commit('setJobDone', true)
+      })
+      .catch((error) => {
+        commit('setBusy', false)
+        commit('setError', error)
+      })
   }
 }
 
 export const getters = {
+  user(state) {
+    return state.user
+  },
+  loginStatus(state) {
+    return state.user !== null && state.user !== undefined
+  },
+  userRole(state) {
+    const isLoggedIn = state.user !== null && state.user !== undefined
+    return isLoggedIn ? state.user.role : 'customer'
+  },
   error(state) {
     return state.error
   },
@@ -184,15 +254,5 @@ export const getters = {
   },
   jobDone(state) {
     return state.jobDone
-  },
-  user(state) {
-    return state.user
-  },
-  logingStatus(state) {
-    return state.logingStatus
-  },
-  userRole(state) {
-    const isLoggedIn = state.logingStatus
-    return isLoggedIn ? state.user.role : 'customer'
   }
 }

@@ -1,7 +1,8 @@
-import firebase from '@/plugins/firebase'
+import { fireApp, adminApp } from '@/plugins/firebase'
 
 export const state = () => ({
-  groups: []
+  groups: [],
+  admins: []
 })
 
 export const mutations = {
@@ -15,14 +16,21 @@ export const mutations = {
   removeGroup(state, payload) {
     const i = state.groups.indexOf(payload.group)
     state.groups.splice(i, 1)
+  },
+  loadAdmins(state, payload) {
+    state.admins.push(payload)
+  },
+  removeAdmin(state, payload) {
+    const i = state.admins.indexOf(payload.admin)
+    state.admins.splice(i, 1)
   }
 }
 
 export const actions = {
   createGroup({ commit }, payload) {
     commit('setBusy', true, { root: true })
-    commit('clearEssor', true, { root: true })
-    firebase
+    commit('clearError', null, { root: true })
+    fireApp
       .database()
       .ref('groups')
       .push(payload)
@@ -32,19 +40,20 @@ export const actions = {
       })
       .catch((error) => {
         commit('setBusy', false, { root: true })
-        commit('setEssor', error, { root: true })
+        commit('setError', error, { root: true })
       })
   },
   updateGroup({ commit }, payload) {
     commit('setBusy', true, { root: true })
-    commit('clearEssor', true, { root: true })
-    firebase
+    commit('clearError', null, { root: true })
+    fireApp
       .database()
       .ref(`groups/${payload.group.key}`)
-      .push({ name: payload.name })
+      .update({ name: payload.name })
       .then(() => {
         commit('setBusy', false, { root: true })
         commit('setJobDone', true, { root: true })
+
         const groupData = {
           group: payload.group,
           name: payload.name
@@ -53,35 +62,145 @@ export const actions = {
       })
       .catch((error) => {
         commit('setBusy', false, { root: true })
-        commit('setEssor', error, { root: true })
+        commit('setError', error, { root: true })
+      })
+  },
+  getGroups({ commit }) {
+    fireApp
+      .database()
+      .ref('groups')
+      .on('child_added', (snapShot) => {
+        const item = snapShot.val()
+        item.key = snapShot.key
+        commit('loadGroups', item)
       })
   },
   removeGroup({ commit }, payload) {
-    commit('setBusy', true, { root: true })
-    commit('clearEssor', true, { root: true })
-    firebase
+    fireApp
       .database()
       .ref(`groups/${payload.group.key}`)
       .remove()
       .then(() => {
-        commit('setBusy', false, { root: true })
-        commit('setJobDone', true, { root: true })
         commit('removeGroup', payload)
       })
       .catch((error) => {
         commit('setBusy', false, { root: true })
-        commit('setEssor', error, { root: true })
+        commit('setError', error, { root: true })
       })
   },
-
-  getGroups({ commit }) {
-    firebase
+  createAdmin({ commit }, payload) {
+    // Signup new administrator
+    commit('setBusy', true, { root: true })
+    commit('clearError', null, { root: true })
+    let newAdmin = null
+    adminApp
+      .auth()
+      .createUserWithEmailAndPassword(payload.email, payload.password)
+      .then((response) => {
+        response.user.updateProfile({ displayName: payload.fullname })
+        newAdmin = response.user
+        // Add extra user data into database
+        const userProfile = {
+          email: payload.email,
+          fullname: payload.fullname,
+          created_at: new Date().toISOString()
+        }
+        fireApp
+          .database()
+          .ref(`users/${newAdmin.uid}`)
+          .set(userProfile)
+      })
+      .then(() => {
+        // Assigning user to administrator group
+        fireApp
+          .database()
+          .ref('groups')
+          .orderByChild('name')
+          .equalTo('Administrator')
+          .once('value')
+          .then((snapShot) => {
+            const groupKey = Object.keys(snapShot.val())[0]
+            const groupedUser = {}
+            groupedUser[newAdmin.uid] = payload.fullname
+            fireApp
+              .database()
+              .ref(`userGroups/${groupKey}`)
+              .update(groupedUser)
+          })
+      })
+      .then(() => {
+        // Assigning user to consumer group
+        fireApp
+          .database()
+          .ref('groups')
+          .orderByChild('name')
+          .equalTo('Customer')
+          .once('value')
+          .then((snapShot) => {
+            const groupKey = Object.keys(snapShot.val())[0]
+            const groupedUser = {}
+            groupedUser[newAdmin.uid] = payload.fullname
+            fireApp
+              .database()
+              .ref(`userGroups/${groupKey}`)
+              .update(groupedUser)
+          })
+      })
+      .then(() => {
+        commit('setJobDone', true, { root: true })
+        commit('setBusy', false, { root: true })
+      })
+      .catch((error) => {
+        commit('setBusy', false, { root: true })
+        commit('setError', error, { root: true })
+      })
+  },
+  getAdmins({ commit }) {
+    fireApp
       .database()
       .ref('groups')
-      .on('child_added', (snapshot) => {
-        const items = snapshot.val()
-        // item.key = snapshot.key
-        commit('loadGroups', items)
+      .orderByChild('name')
+      .equalTo('Administrator')
+      .once('value')
+      .then((snapShot) => {
+        let item = {}
+        const groupKey = Object.keys(snapShot.val())[0]
+        fireApp
+          .database()
+          .ref(`userGroups/${groupKey}`)
+          .on('child_added', (snapShot) => {
+            item = {
+              id: snapShot.key,
+              name: snapShot.val()
+            }
+            commit('loadAdmins', item)
+          })
+      })
+      .catch((error) => {
+        commit('setBusy', false, { root: true })
+        commit('setError', error, { root: true })
+      })
+  },
+  removeAdmin({ commit }, payload) {
+    fireApp
+      .database()
+      .ref('groups')
+      .orderByChild('name')
+      .equalTo('Administrator')
+      .once('value')
+      .then((snapShot) => {
+        const groupKey = Object.keys(snapShot.val())[0]
+        fireApp
+          .database()
+          .ref(`userGroups/${groupKey}/${payload.admin.id}`)
+          .remove()
+          .then(() => {
+            commit('removeAdmin', payload)
+          })
+      })
+      .catch((error) => {
+        commit('setBusy', false, { root: true })
+        commit('setError', error, { root: true })
       })
   }
 }
@@ -89,5 +208,8 @@ export const actions = {
 export const getters = {
   groups(state) {
     return state.groups
+  },
+  admins(state) {
+    return state.admins
   }
 }
