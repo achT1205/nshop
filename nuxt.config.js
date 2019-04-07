@@ -1,5 +1,3 @@
-import pkg from './package'
-
 export default {
   mode: 'universal',
 
@@ -7,11 +5,11 @@ export default {
    ** Headers of the page
    */
   head: {
-    title: pkg.name,
+    title: 'Nshop',
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { hid: 'description', name: 'description', content: pkg.description }
+      { hid: 'description', name: 'description', content: 'description' }
     ],
     link: [
       { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
@@ -63,6 +61,11 @@ export default {
    ** Build configuration
    */
   build: {
+    optimization: {
+      splitChunks: {
+        maxSize: 244000
+      }
+    },
     /*
      ** You can extend webpack config here
      */

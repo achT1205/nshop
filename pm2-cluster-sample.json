@@ -1,0 +1,16 @@
+{
+  "name" : "NSHOP",
+  "script" : "./server/server.js",
+  "instances" : 2,
+  "exec_mode" : "cluster",
+  "combine_logs": true,
+  "max_memory_restart": "250M",
+  "env": { 
+    "NODE_ENV": "production",
+    "apiKey": "AIzaSyDZUYCmlqtSSBKzRd5ehvelZWGUqUBT5PI",
+    "authDomain": "fbone-1c4f0.firebaseapp.com",
+    "databaseURL": "https://fbone-1c4f0.firebaseio.com",
+    "projectId": "fbone-1c4f0",
+    "storageBucket": "fbone-1c4f0.appspot.com"
+  }
+}
