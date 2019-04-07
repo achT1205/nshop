@@ -19,7 +19,7 @@ export default {
   watch: {
     jobDone(value) {
       if (value) {
-        this.$store.commit('setJobDone', false)
+        this.$store.commit('setJobDone', true)
         this.jobsDone()
       }
     }

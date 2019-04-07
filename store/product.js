@@ -2,7 +2,9 @@ import { fireApp } from '@/plugins/firebase'
 
 export const state = () => ({
   categories: [],
-  products: []
+  products: [],
+  product: null,
+  productCategories: []
 })
 
 export const mutations = {
@@ -23,6 +25,15 @@ export const mutations = {
   removeProduct(state, payload) {
     const i = state.products.indexOf(payload)
     state.products.splice(i, 1)
+  },
+  loadProduct(state, payload) {
+    state.product = payload
+  },
+  loadProductCategories(state, payload) {
+    state.productCategories.push(payload)
+  },
+  clearProductCategories(state) {
+    state.productCategories = []
   }
 }
 
@@ -127,9 +138,9 @@ export const actions = {
           status: productData.status,
           imageUrl: imageUrl
         }
-        catUpdates = { hh: '' }
+        catUpdates = { }
         categories.forEach((catKey) => {
-          catUpdates[`productCategoies/${catKey}/${productKey}`] = productSnippet
+          catUpdates[`productCategories/${catKey}/${productKey}`] = productSnippet
         })
         return fireApp
           .database()
@@ -201,6 +212,106 @@ export const actions = {
         commit('setBusy', false, { root: true })
         commit('setError', error, { root: true })
       })
+  },
+  updateProduct({ dispatch, commit }, payload) {
+    const productData = payload
+    const categories = productData.belongs
+    const image = payload.image
+    const productKey = payload.key
+    let oldImageUrl = null
+    const oldCatsRemoval = {}
+    delete productData.belongs
+    delete productData.image
+    commit('setBusy', true, { root: true })
+    commit('setError', null, { root: true })
+
+    fireApp
+      .database()
+      .ref(`products/${productKey}`)
+      .update(productData)
+      .then(() => {
+        if (image) {
+          return fireApp
+            .storage()
+            .ref(`products/${image.name}`)
+            .put(image)
+        } else {
+          return false
+        }
+      })
+      .then((fileData) => {
+        if (fileData) {
+          oldImageUrl = productData.oldImageUrl
+          const task = fileData.task
+          return task.snapshot.ref.getDownloadURL().then((downloadURL) => {
+            productData.imageUrl = downloadURL
+            return fireApp
+              .database()
+              .ref('products')
+              .child(productKey)
+              .update({ imageUrl: productData.imageUrl })
+          })
+        }
+      })
+      .then(() => {
+        if (oldImageUrl) {
+          const refUrl = oldImageUrl.split('?')[0]
+          const httpsRef = fireApp.storage().refFromURL(refUrl)
+          return httpsRef.delete()
+        }
+      })
+      .then(() => {
+        return fireApp
+          .database()
+          .ref('productCategories')
+          .on('child_added', (snapShot) => {
+            oldCatsRemoval[`productCategories/${snapShot.key}/${productKey}`] = null
+          })
+      })
+      .then(() => {
+        return fireApp
+          .database()
+          .ref()
+          .update(oldCatsRemoval)
+      })
+      .then(() => {
+        const productSnippet = {
+          name: productData.name,
+          imageUrl: productData.imageUrl,
+          price: productData.price,
+          status: productData.status
+        }
+        const catUpdates = {}
+        categories.forEach((catKey) => {
+          catUpdates[`productCategories/${catKey}/${productKey}`] = productSnippet
+        })
+        return fireApp
+          .database()
+          .ref()
+          .update(catUpdates)
+      })
+      .then(() => {
+        dispatch('getProducts')
+        commit('setBusy', false, { root: true })
+        commit('setJobDone', true, { root: true })
+      })
+      .catch((error) => {
+        commit('setBusy', false, { root: true })
+        commit('setError', error, { root: true })
+      })
+  },
+  productCategories({ commit }, payload) {
+    commit('clearProductCategories')
+    fireApp
+      .database()
+      .ref('productCategories')
+      .on('child_added', (snapShot) => {
+        const item = snapShot.val()
+        item.key = snapShot.key
+        if (item[payload] !== undefined) {
+          commit('loadProductCategories', item.key)
+        }
+      })
   }
 }
 
@@ -210,5 +321,11 @@ export const getters = {
   },
   products(state) {
     return state.products
+  },
+  product(state) {
+    return state.product
+  },
+  productCategories(state) {
+    return state.productCategories
   }
 }

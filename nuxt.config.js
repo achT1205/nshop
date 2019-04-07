@@ -37,13 +37,27 @@ export default {
    */
   plugins: [
     '@/plugins/vee-validate',
-    '@/plugins/vue-swal'
+    '@/plugins/vue-swal',
+    '@/plugins/filters'
   ],
 
   /*
    ** Nuxt.js modules
    */
-  modules: [],
+  modules: [
+    '@nuxtjs/toast',
+    [
+      'vue-warehouse/nuxt',
+      {
+        vuex: true,
+        plugins: ['store/plugins/expire', 'store/plugins/defaults'],
+        storages: [
+          'store/storages/localStorage',
+          'store/storages/cookieStorage'
+        ]
+      }
+    ]
+  ],
 
   /*
    ** Build configuration

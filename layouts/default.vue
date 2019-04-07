@@ -63,7 +63,7 @@
                     <span class="icon is-small">
                       <i class="fa fa-shopping-cart" />
                     </span>
-                    <span>&bullet; 0 item ($0.00)</span>
+                    <span>&bullet; {{ cart.items.length }} {{ cart.items.length > 1 ? 'items' : 'item' }} ({{ cartTotal|currency }})</span>
                   </nuxt-link>
                 </p>
 
@@ -110,7 +110,10 @@
 </template>
 
 <script>
+import cartMixin from '@/mixins/cartMixin'
+
 export default {
+  mixins: [cartMixin],
   data() {
     return {
       userName: 'Guest'
@@ -121,7 +124,7 @@ export default {
       return this.$store.getters.user
     },
     userLoggedIn() {
-      return this.$store.getters.logingStatus
+      return this.$store.getters.loginStatus
     },
     userIsAdmin() {
       return this.$store.getters.userRole === 'admin'
@@ -134,6 +137,12 @@ export default {
       } else {
         this.userName = 'Guest'
       }
+    }
+  },
+  mounted() {
+    const cartInMemory = this.$warehouse.get('cart')
+    if (this.cart.items.length === 0 && cartInMemory !== undefined) {
+      this.$store.commit('catalog/reloadCart', cartInMemory)
     }
   },
   created() {

@@ -70,7 +70,7 @@ export default {
     }
   },
   beforeCreate() {
-    const loggedId = this.$store.getters.logingStatus
+    const loggedId = this.$store.getters.loginStatus
     if (loggedId) {
       this.$router.replace('/')
     }
@@ -89,7 +89,13 @@ export default {
     },
     jobsDone() {
       this.removeErrors()
-      this.$router.replace('/')
+      let nextRoute = '/'
+      const forwardRoute = this.$store.getters.forwardRoute
+      if (forwardRoute !== null) {
+        nextRoute = forwardRoute
+        this.$store.commit('setForwardRoute', null)
+      }
+      this.$router.replace(nextRoute)
     }
   }
 }

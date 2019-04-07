@@ -42,7 +42,7 @@
               <img :src="item.imageUrl" class="image is-48x48">
             </td>
             <td>
-              <a href="#">{{ item.name }}</a>
+              <a href="#" @click.prevent="editProduct(item)">{{ item.name }}</a>
             </td>
             <td>{{ item.code }}</td>
             <td>{{ item.brand }}</td>
@@ -81,6 +81,8 @@ export default {
     if (loadedProducts.length === 0) {
       this.$store.dispatch('product/getProducts')
     }
+    this.$store.commit('product/loadProduct', null)
+    this.$store.commit('product/clearProductCategories')
   },
   methods: {
     removeProduct(product) {
@@ -94,6 +96,10 @@ export default {
           this.$store.dispatch('product/removeProduct', product)
         }
       })
+    },
+    editProduct(product) {
+      this.$store.commit('product/loadProduct', product)
+      this.$router.push('product-edit')
     }
   }
 }

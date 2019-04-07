@@ -4,7 +4,8 @@ export const state = () => ({
   user: null,
   error: null,
   busy: false,
-  jobDone: false
+  jobDone: false,
+  forwardRoute: null
 })
 
 export const mutations = {
@@ -22,12 +23,16 @@ export const mutations = {
   },
   setJobDone(state, payload) {
     state.jobDone = payload
+  },
+  setForwardRoute(state, payload) {
+    state.forwardRoute = payload
   }
 }
 
 export const actions = {
   signUpUser({ commit }, payload) {
     commit('setBusy', true)
+    commit('setJobDone', false)
     commit('clearError')
     // 1. Signup new user
     // 2. Update firebase user profile & set local user data
@@ -91,6 +96,7 @@ export const actions = {
   loginUser({ commit }, payload) {
     commit('setBusy', true)
     commit('clearError')
+    commit('setJobDone', false)
     // 1. Login user
     // 2. Find the group user belongs
     // 3. Set logged in user
@@ -240,7 +246,8 @@ export const getters = {
     return state.user
   },
   loginStatus(state) {
-    return state.user !== null && state.user !== undefined
+    const status = state.user !== null && state.user !== undefined
+    return status
   },
   userRole(state) {
     const isLoggedIn = state.user !== null && state.user !== undefined
@@ -254,5 +261,8 @@ export const getters = {
   },
   jobDone(state) {
     return state.jobDone
+  },
+  forwardRoute(state) {
+    return state.forwardRoute
   }
 }
